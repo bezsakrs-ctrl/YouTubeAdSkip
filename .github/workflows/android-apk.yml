@@ -18,12 +18,36 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Accept Android SDK licenses
+      - name: Diagnose Android SDK
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          echo "ANDROID_HOME=${ANDROID_HOME:-not set}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-not set}"
+          if [ -d "$ANDROID_HOME" ]; then
+            echo "--- SDK contents ---"
+            ls "$ANDROID_HOME"
+            echo "--- cmdline-tools ---"
+            ls "$ANDROID_HOME/cmdline-tools" 2>/dev/null || echo "no cmdline-tools dir"
+            echo "--- platforms ---"
+            ls "$ANDROID_HOME/platforms" 2>/dev/null || echo "no platforms dir"
+            echo "--- build-tools ---"
+            ls "$ANDROID_HOME/build-tools" 2>/dev/null || echo "no build-tools dir"
+          else
+            echo "ANDROID_HOME directory does not exist"
+          fi
+          which sdkmanager 2>/dev/null && echo "sdkmanager found on PATH" || echo "sdkmanager not on PATH"
 
-      - name: Install Android platform
-        run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install SDK components
+        run: |
+          SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMGR" ]; then
+            echo "sdkmanager not at latest, trying other paths..."
+            for f in "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager; do
+              if [ -f "$f" ]; then SDKMGR="$f"; break; fi
+            done
+          fi
+          echo "Using: $SDKMGR"
+          yes | "$SDKMGR" --licenses
+          "$SDKMGR" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -31,7 +55,9 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          gradle --no-daemon :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
