@@ -1,0 +1,17 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "lv.autoskip.youtube"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "lv.autoskip.youtube"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+    }
+}
